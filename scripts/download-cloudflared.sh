@@ -9,7 +9,6 @@ mkdir -p "$ASSETS_DIR"
 
 echo "Fetching latest cloudflared download link..."
 
-# Extract only the correct binary link for linux-arm64 (excluding .deb or other formats)
 DOWNLOAD_URL=$(curl -s $REPO_URL | grep "browser_download_url" | grep "cloudflared-linux-arm64"" | cut -d '"' -f 4)
 
 if [ -z "$DOWNLOAD_URL" ]; then
