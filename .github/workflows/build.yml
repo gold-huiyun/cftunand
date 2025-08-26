@@ -1,0 +1,112 @@
+
+name: Build cloudflared Android APK (v5 debug)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-cloudflared-cgo:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout cloudflared source
+        uses: actions/checkout@v4
+        with:
+          repository: cloudflare/cloudflared
+          ref: '2025.8.1'
+          path: cloudflared-src
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.x'
+          cache: true
+          cache-dependency-path: cloudflared-src/go.sum
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install NDK (r26d)
+        run: sdkmanager "ndk;26.1.10909125"
+
+      - name: Build cloudflared for Android arm64 with CGO (NDK)
+        working-directory: cloudflared-src
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
+        run: |
+          # Resolve NDK home
+          export ANDROID_NDK_HOME=$(ls -d $ANDROID_SDK_ROOT/ndk/* | sort | tail -n1)
+          echo NDK=$ANDROID_NDK_HOME
+          # API level 24+ for TLS/modern syscalls
+          export API=24
+          export CC="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android${API}-clang"
+          export CXX="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android${API}-clang++"
+          export CGO_ENABLED=1
+          export GOOS=android
+          export GOARCH=arm64
+          go mod download
+          # Build
+          go build -trimpath -ldflags="-s -w" -o cloudflared ./cmd/cloudflared
+          file ./cloudflared || true
+          mkdir -p artifact
+          cp ./cloudflared artifact/libcloudflared.so
+          chmod +x artifact/libcloudflared.so
+
+      - name: Upload cloudflared artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudflared-android-arm64-cgo
+          path: cloudflared-src/artifact/libcloudflared.so
+
+  build-android:
+    runs-on: ubuntu-latest
+    needs: build-cloudflared-cgo
+    steps:
+      - name: Checkout this repo
+        uses: actions/checkout@v4
+
+      - name: Download cloudflared artifact (CGO)
+        uses: actions/download-artifact@v4
+        with:
+          name: cloudflared-android-arm64-cgo
+          path: app/src/main/jniLibs/arm64-v8a
+
+      - name: Grant execute
+        run: chmod +x app/src/main/jniLibs/arm64-v8a/libcloudflared.so
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platforms & build-tools
+        run: |
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Point local.properties to ANDROID_SDK_ROOT
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+
+      - name: Setup Gradle (cache)
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install Gradle 8.9 (no wrapper)
+        run: |
+          GRADLE_VERSION=8.9
+          curl -sL https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip -o gradle.zip
+          unzip -q gradle.zip -d $HOME/gradle
+          echo "$HOME/gradle/gradle-${GRADLE_VERSION}/bin" >> $GITHUB_PATH
+          gradle -v
+
+      - name: Build Debug APK
+        run: gradle --no-daemon assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
