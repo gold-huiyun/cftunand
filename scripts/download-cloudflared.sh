@@ -4,11 +4,13 @@ ASSETS_DIR="app/src/main/assets"
 BINARY_NAME="cloudflared"
 REPO_URL="https://api.github.com/repos/cloudflare/cloudflared/releases/latest"
 
-# 确保目录存在
+# Ensure the assets directory exists
 mkdir -p "$ASSETS_DIR"
 
 echo "Fetching latest cloudflared download link..."
-DOWNLOAD_URL=$(curl -s $REPO_URL | grep "browser_download_url" | grep "linux-arm64" | cut -d '"' -f 4)
+
+# Extract only the correct binary link for linux-arm64 (excluding .deb or other formats)
+DOWNLOAD_URL=$(curl -s $REPO_URL | grep "browser_download_url" | grep "cloudflared-linux-arm64"" | cut -d '"' -f 4)
 
 if [ -z "$DOWNLOAD_URL" ]; then
     echo "Error: Unable to fetch download link!"
