@@ -1,0 +1,44 @@
+
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:orientation="vertical" android:padding="16dp"
+  android:layout_width="match_parent" android:layout_height="match_parent">
+
+  <EditText
+    android:id="@+id/token"
+    android:hint="粘贴 Cloudflare Tunnel Token"
+    android:inputType="textNoSuggestions|textVisiblePassword"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"/>
+
+  <LinearLayout
+    android:orientation="horizontal"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+    <Button android:id="@+id/btnStart" android:text="启动"
+      android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"/>
+    <Button android:id="@+id/btnStop" android:text="停止"
+      android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"/>
+  </LinearLayout>
+
+  <TextView
+    android:id="@+id/status"
+    android:text="状态: 未启动"
+    android:textStyle="bold"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:paddingTop="8dp"/>
+
+  <ScrollView
+    android:layout_width="match_parent"
+    android:layout_height="0dp"
+    android:layout_weight="1"
+    android:fillViewport="true">
+    <TextView
+      android:id="@+id/logView"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:textIsSelectable="true"
+      android:typeface="monospace"
+      android:textSize="12sp"/>
+  </ScrollView>
+</LinearLayout>
